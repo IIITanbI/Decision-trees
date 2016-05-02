@@ -11,6 +11,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+using NDesk.Options;
+using System.IO;
+
 namespace ConsoleTest
 {
     public class Test
@@ -49,43 +52,63 @@ namespace ConsoleTest
 
         static void Main(string[] args)
         {
+            List<string> _files = new List<string>();
+            List<string> _parametres = new List<string>();
+            bool _isPruning = false;
+            bool _crossValidate = false;
+            bool _allAtttibutes = false;
+            List<string> _attributesList = new List<string>();
+            string _attribute = null;
+
+
+            string currentParameter = null;
+            OptionSet options = new OptionSet()
+            {
+                {"f|file", "a list of files" , v => {
+                    currentParameter = "f";
+                }},
+                {"a", "attributes", v => {
+                    currentParameter = "a";
+                }},
+                {"p", "pruning", v => {
+                    _isPruning = true;
+                }},
+                {"c", "cross validate", v => {
+                    _crossValidate = true;
+                }},
+                {"aa", "all attribute", v => {
+                    _allAtttibutes = true;
+                }},
+                { "<>", v => {
+                    switch(currentParameter) {
+                        case "a":
+                            _attributesList.Add(v.ToLower());
+                            break;
+                        case "f":
+                            _files.Add(v);
+                            break;
+                    }
+                }}
+            };
+            options.Parse(args);
 
             Console.ReadLine();
-            var files = new List<string>();
-
-            if (args.Length > 0)
-            {
-                files = args.ToList();
-            }
-            else
-            {
-                string fileNames = null;
-                while (fileNames != null)
-                {
-                    Console.WriteLine("Error file(s) name");
-                    fileNames = Console.ReadLine();
-                    files = fileNames.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-                }
-            }
-
-
-
-
+            var files = _files;
 
             var sw = Stopwatch.StartNew();
 
-            List<Task> gltasks = new List<Task>();
 
-            int start = 0;
+            int start = Console.CursorTop + 1;
             List<Task> tasks = new List<Task>();
+
             #region
             foreach (var fileName in files)
             {
                 var tests = new List<Test>();
-                tests.Add(new Test() { Tree = new C4_5Tree() });
+                //tests.Add(new Test() { Tree = new C4_5Tree() });
                 tests.Add(new Test() { Tree = new ID3Tree() });
-                tests.Add(new Test() { Tree = new KNNTree() });
-                tests.Add(new Test() { Tree = new NBCTree() });
+                //tests.Add(new Test() { Tree = new KNNTree() });
+                //tests.Add(new Test() { Tree = new NBCTree() });
 
                 Console.WriteLine($"File: {fileName}");
 
@@ -95,51 +118,63 @@ namespace ConsoleTest
 
                 double total = 0;
                 double cur = 0;
+
                 foreach (var test in tests)
                 {
                     test.Prepare(fileName);
-                    var _attributes = test.Full.GetAttributeList();
+                    var _attributes = test.Full.GetAttributeDict();
                     fullList = fullList.Union(_attributes.Keys).ToList();
 
                     total += _attributes.Count;
                 }
-                if (fileName == "input.txt")
-                    start = 10;
-                else start = 30;
-
 
                 int curR = start;
-                //Console.WriteLine("cur R = " + curR);
-                Console.CursorTop= curR + 1;
+                Console.CursorTop = curR + 1;
 
                 string[][] matrix = Clear(fullList, tests);
                 Print(matrix);
-
-
-
+                Console.WriteLine();
 
                 #region
                 foreach (var test in tests)
                 {
                     Task task = new Task(() =>
                     {
-                        var _attributes = test.Full.GetAttributeList();
-                        foreach (var attribute in _attributes)
+                        List<string> _attributes = new List<string>();
+                        List<string> _allAttributes = test.Full.GetAttributeList();
+                        List<string> _errorAttributes = new List<string>();
+
+                        if (_allAtttibutes)
                         {
-                            // Console.WriteLine($"Attribute: {attribute}");
-                            string name = attribute.Key;
+                            _attributes = _allAttributes;
+                        }
+                        else
+                        {
+                            foreach (var att in _attributesList)
+                            {
+                                if (_allAttributes.Contains(att))
+                                {
+                                    _attributes.Add(att);
+                                }
+                                else
+                                {
+                                    _errorAttributes.Add(att);
+                                }
+                            }
+                        }
+
+                        foreach (var name in _attributes)
+                        {
                             var tree = test.Tree;
                             tree.Data = test.Init;
                             tree.ClassificationAttributeName = name;
                             tree.Build();
 
-                            double pre = tree.GetRightProbability(test.Controll);
-                            tree.Prunning(test.Controll, 1.96);
-                            double post = tree.GetRightProbability(test.Controll);
-                            //Console.WriteLine(pre + " vs " + post);
-                            double best = Math.Max(pre, post);
-                            test.Results[name] = best;
-                            test.Results[name] = post;
+                            if (_isPruning)
+                                tree.Prunning(test.Controll, 1.96);
+
+                            double res = tree.GetRightProbability(test.Controll);
+                            test.Results[name] = res;
 
                             cur++;
 
@@ -157,16 +192,27 @@ namespace ConsoleTest
                                 Print(matrix);
                             }
                         }
+
+                        if (_errorAttributes.Count > 0)
+                        {
+                            Console.Write("Wrong attributes: ");
+                            foreach (var att in _errorAttributes)
+                                Console.Write(" " + att);
+                            Console.WriteLine();
+                        }
+
                     });
                     tasks.Add(task);
                 }
                 #endregion
+                start += fullList.Count + 5;
             }
             #endregion
+
             tasks.ForEach(t => t.Start());
             Task.WaitAll(tasks.ToArray());
 
-            Console.CursorTop = 50;
+            Console.CursorTop = start;
             Console.WriteLine("All OK " + sw.ElapsedMilliseconds);
             Console.WriteLine("OK");
             Console.ReadLine();
