@@ -1,4 +1,4 @@
-﻿using ID3;
+﻿using C4_5;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -55,13 +55,13 @@ namespace TreeUI
         public S_Node Root { get; private set; }
 
         public List<int> mapLevels { get; } = new List<int>();
-        public TreeStats(Tree tree)
+        public TreeStats(C4_5Tree tree)
         {
             Parse(tree);
             CopyTree(tree);
         }
 
-        private void Parse(Tree tree)
+        private void Parse(C4_5Tree tree)
         {
             var queue = new Queue<Node>();
             queue.Enqueue(tree.Root);
@@ -97,7 +97,7 @@ namespace TreeUI
             this.MaxWidth = MaxWidth;
         }
 
-        private void CopyTree(Tree tree)
+        private void CopyTree(C4_5Tree tree)
         {
             S_Node root = new S_Node(tree.Root);
             this.Root = root;
@@ -111,7 +111,6 @@ namespace TreeUI
         {
             InitializeComponent();
         }
-
 
         public int GetWidth(S_Node node)
         {
@@ -129,7 +128,7 @@ namespace TreeUI
 
                     //space
                     //if (i < to - 1)
-                        leftWidth += 1;
+                    leftWidth += 1;
                 }
 
                 int from = cnt / 2;
@@ -139,7 +138,7 @@ namespace TreeUI
 
                     //space
                     //if (i < cnt - 1)
-                        rigthWidth += 1;
+                    rigthWidth += 1;
                 }
             }
             else
@@ -173,7 +172,7 @@ namespace TreeUI
 
             return node.TotalWidth;
         }
-        public void Draw(Tree tree)
+        public void Draw(C4_5Tree tree)
         {
             treeStats = new TreeStats(tree);
             int total = GetWidth(treeStats.Root);
@@ -193,7 +192,7 @@ namespace TreeUI
                 RowDefinition row = new RowDefinition();
                 //row.Height = GridLength.Auto;
                 //row.Height = new GridLength(50);
-                row.MinHeight = 50;
+                //row.MinHeight = 30;
                 MainGrid.RowDefinitions.Add(row);
             }
 
@@ -202,35 +201,54 @@ namespace TreeUI
                 ColumnDefinition column = new ColumnDefinition();
                 //column.Width = GridLength.Auto;
                 //column.Width = new GridLength(100);
-                column.MinWidth = 50;
+                column.MinWidth = 30;
                 MainGrid.ColumnDefinitions.Add(column);
             }
 
-            for(int i = 0; i < n; i++)
+            for (int i = 0; i < n; i++)
             {
-                for(int j = 0; j < m; j++)
+                for (int j = 0; j < m; j++)
                 {
+
                     if (matrix[i, j] != null)
                     {
                         S_Node node = matrix[i, j];
                         Label label = new Label();
-                        string res = 
-                            $"split value: {node.Node.SplitValue} \n" +
-                            $"split threshold: {node.Node.SplitValueThreshold} \n" +
-                            $"split sign: {node.Node.SplitValueThresholdSign} \n" +
-                            $"split attr: {node.Node.SplitAttributeName} \n" +
-                            $"res: {node.Node.Classification.Result.FirstOrDefault()?.Value}  {node.Node.Classification.Result.FirstOrDefault()?.Percent}";
+                        label.HorizontalAlignment = HorizontalAlignment.Center;
+                        label.VerticalAlignment = VerticalAlignment.Center;
+                        string res = "";
+
+                        if (node.Node.SplitValue != null)
+                        {
+                            res += $"split value: {node.Node.SplitValue}\n";
+                        }
+                        else
+                        {
+                            if (node.Node.SplitValueThreshold != null)
+                            {
+                                string sign = node.Node.SplitValueThresholdSign == -1 ? "<" : ">";
+                                res += $"split threshold: {sign} {node.Node.SplitValueThreshold}\n";
+                            }
+                        }
+                        if (node.Node.Nodes.Count == 0)
+                        {
+                            res += $"res: {node.Node.Classification.Result.FirstOrDefault()?.Value}  {node.Node.Classification.Result.FirstOrDefault()?.Percent}";
+                        }
+                        else
+                        {
+                            res += $"split attr: {node.Node.SplitAttributeName}";
+                        }
+
                         label.Content = res;
 
                         if (node.Nodes.Count > 0)
                         {
-                            foreach(S_Node children in node.Nodes)
+                            foreach (S_Node children in node.Nodes)
                             {
                                 int ii = children.Height;
                                 int jj = children.StartPosition;
 
                                 int di = Math.Abs(ii - i) - 1;
-                                
 
                                 if (jj > j)
                                 {
@@ -259,14 +277,15 @@ namespace TreeUI
                                     if (dj > 0)
                                     {
                                         Grid.SetColumnSpan(path, dj);
-                                        Grid.SetColumn(path, column - dj  + 1);
-                                    } else
+                                        Grid.SetColumn(path, column - dj + 1);
+                                    }
+                                    else
                                     {
                                         Grid.SetColumn(path, column);
                                     }
                                     Grid.SetRow(path, i * 2 + 1);
                                     MainGrid.Children.Add(path);
-                                } 
+                                }
                                 else
                                 {
                                     //mid
@@ -275,18 +294,18 @@ namespace TreeUI
                                     Grid.SetColumn(path, j);
                                     MainGrid.Children.Add(path);
                                 }
-
-
                             }
                         }
 
-                        Grid.SetRow(label, i*2);
+                        Grid.SetRow(label, i * 2);
                         Grid.SetColumn(label, j);
+                        MainGrid.RowDefinitions[i * 2].Height = GridLength.Auto;
+
                         MainGrid.Children.Add(label);
                     }
                 }
             }
-            MainGrid.ShowGridLines = true;
+            MainGrid.ShowGridLines = !true;
         }
 
         private Path GetPath(Point start, Point end)
@@ -362,7 +381,7 @@ namespace TreeUI
                 }
             }
 
-            foreach(S_Node children in node.Nodes)
+            foreach (S_Node children in node.Nodes)
             {
                 Dfs(children);
             }

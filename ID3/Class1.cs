@@ -370,6 +370,23 @@ namespace ID3
             double percent = 100.0 * right / set.Items.Count;
             return percent;
         }
+
+        public Item GetItem(Dictionary<string, string> itemAttributes)
+        {
+            Item item = new Item();
+            foreach (var pair in itemAttributes)
+            {
+                string name = pair.Key;
+                object value = pair.Value;
+                var tuple = _attributeMap[name];
+
+                var obj = (IComparable)Convert.ChangeType(value, tuple.Item2);
+                var attr = new MyAttribute(name, obj, tuple.Item1);
+
+                item.Attributes[name] = attr;
+            }
+            return item;
+        }
     }
 
 

@@ -1,4 +1,4 @@
-﻿using ID3;
+﻿using C4_5;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,15 +21,16 @@ namespace TreeUI
     /// </summary>
     public partial class MainWindow : Window
     {
-        Tree curTree = null;
-        public MainWindow(Tree tree)
+        C4_5Tree curTree = null;
+
+        public MainWindow(C4_5Tree tree)
         {
             InitializeComponent();
             curTree = tree;
-            DrawTree(tree);
-        }
+            DrawTree(curTree);
 
-        public void DrawTree(Tree tree)
+        }
+        public void DrawTree(C4_5Tree tree)
         {
             TVizualizer.Draw(tree);
         }

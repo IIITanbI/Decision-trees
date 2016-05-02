@@ -42,7 +42,8 @@ namespace Main
         }
         public override string ToString()
         {
-            return $"{Value} : {Percent} : {Count}";
+            return $"{Value} : {Percent}%";
+            //return $"{Value} : {Percent}% : {Count}";
         }
     }
 
@@ -89,7 +90,7 @@ namespace Main
     public class DataSet
     {
         public List<Item> Items { get; set; } = new List<Item>();
-        public Dictionary<string, AttributeType> GetAttributeList()
+        public Dictionary<string, AttributeType> GetAttributeDict()
         {
             var dict = new Dictionary<string, AttributeType>();
             foreach (var item in Items)
@@ -105,6 +106,22 @@ namespace Main
                 }
             }
             return dict;
+        }
+
+        public List<string> GetAttributeList()
+        {
+            var list = new List<string>();
+            foreach (var item in Items)
+            {
+                foreach (var name in item.Attributes.Keys)
+                {
+                    if (!list.Contains(name))
+                    {
+                        list.Add(name);
+                    }
+                }
+            }
+            return list;
         }
         public void Print(int pad)
         {
@@ -137,5 +154,6 @@ namespace Main
         Classification Classify(Item item);
 
         DataSet Parse(string file);
+        Item GetItem(Dictionary<string, string> itemAttributes);
     }
 }

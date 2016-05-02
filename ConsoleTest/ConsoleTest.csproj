@@ -37,14 +37,19 @@
       <HintPath>..\packages\NDesk.Options.0.2.1\lib\NDesk.Options.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Presentation" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
@@ -74,6 +79,10 @@
     <ProjectReference Include="..\NBC\NBC.csproj">
       <Project>{9e31b5ba-e331-4f7f-870e-187b7987e465}</Project>
       <Name>NBC</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TreeUI\TreeUI.csproj">
+      <Project>{f2f0930a-8c3c-4163-9d0a-413625e92327}</Project>
+      <Name>TreeUI</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

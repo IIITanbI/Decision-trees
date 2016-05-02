@@ -107,6 +107,10 @@
       <Project>{2fed6c14-c292-49ec-aca2-887b0d8546f1}</Project>
       <Name>C4.5</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Main\Main.csproj">
+      <Project>{C53E254B-B60D-4FD6-ADFF-4A5131D23E1D}</Project>
+      <Name>Main</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 
 using NDesk.Options;
 using System.IO;
+using TreeUI;
 
 namespace ConsoleTest
 {
@@ -33,7 +34,7 @@ namespace ConsoleTest
             Results.Clear();
 
             Full = Tree.Parse(file);
-            //Full.Items = Full.Items.Take(6).ToList();
+
             Init = new DataSet();
             CrossValidate = new DataSet();
             Controll = new DataSet();
@@ -43,6 +44,29 @@ namespace ConsoleTest
             this.CrossValidate.Items = Full.Items.Skip(partCnt).Take(partCnt).ToList();
             this.Controll.Items = Full.Items.Skip(partCnt + partCnt).ToList();
         }
+
+        public void PrepareRelease(string file, bool pruning)
+        {
+            Results.Clear();
+
+            Full = Tree.Parse(file);
+
+            Init = new DataSet();
+            CrossValidate = new DataSet();
+            Controll = new DataSet();
+
+            Full.Items = Full.Items.Take(20).ToList();
+            if (pruning)
+            {
+                int partCnt = Full.Items.Count / 2;
+                this.Init.Items = Full.Items.Take(partCnt).ToList();
+                this.CrossValidate.Items = Full.Items.Skip(partCnt).Take(partCnt).ToList();
+            }
+            else
+            {
+                this.Init.Items = Full.Items.ToList();
+            }
+        }
     }
 
 
@@ -50,53 +74,121 @@ namespace ConsoleTest
     {
         static object ConsoleWriterLock = new object();
 
+        static Dictionary<string, ITree> TreeMap = new Dictionary<string, ITree>()
+         {
+            {"C45", new C4_5Tree() },
+            {"ID3", new ID3Tree() },
+            {"KNN", new KNNTree() },
+            {"NBC", new NBCTree() }
+          };
+        [STAThread]
         static void Main(string[] args)
         {
             List<string> _files = new List<string>();
             List<string> _parametres = new List<string>();
-            bool _isPruning = false;
-            bool _crossValidate = false;
+            bool _pruning = false;
             bool _allAtttibutes = false;
-            List<string> _attributesList = new List<string>();
+            bool _guiMode = false;
+            string _treeName = "C45".ToUpper();
             string _attribute = null;
-
+            var _attributesList = new List<string>();
+            Dictionary<string, string> _newItemAttributes = null;
+            //Tree file pruning crossvalidation attribute newItem attr:value
+            //Tree file pruning crossvalidation  attribute gui
+            //Tree file pruning crossvalidation  all_attributes
 
             string currentParameter = null;
             OptionSet options = new OptionSet()
             {
-                {"f|file", "a list of files" , v => {
+                {"t", "tree" , v => {
+                    currentParameter = "t";
+                }},
+                {"f", "file" , v => {
                     currentParameter = "f";
                 }},
-                {"a", "attributes", v => {
+                {"p", "pruning enable", v => {
+                    _pruning = true;
+                }},
+                {"a", "attribute", v => {
                     currentParameter = "a";
                 }},
-                {"p", "pruning", v => {
-                    _isPruning = true;
-                }},
-                {"c", "cross validate", v => {
-                    _crossValidate = true;
-                }},
                 {"aa", "all attribute", v => {
+                    _attributesList.Clear();
                     _allAtttibutes = true;
+                }},
+                {"item", "new item", v => {
+                    _newItemAttributes = new  Dictionary<string, string>();
+                    currentParameter = "item";
+                }},
+                {"gui", "gui mode", v => {
+                    _guiMode = true;
                 }},
                 { "<>", v => {
                     switch(currentParameter) {
                         case "a":
-                            _attributesList.Add(v.ToLower());
+                            _attributesList.Add(v);
                             break;
                         case "f":
                             _files.Add(v);
+                            break;
+                        case "t":
+                            _treeName = v.ToUpper();
+                            break;
+                        case "item":
+                            string[] temp = v.Split(new char[] {'='}, StringSplitOptions.RemoveEmptyEntries);
+
+                            string name = temp[0].ToLower();
+                            string value = temp[1].ToLower();
+
+                            _newItemAttributes[name] = value;
                             break;
                     }
                 }}
             };
             options.Parse(args);
 
-            Console.ReadLine();
+
+            if (_allAtttibutes)
+                Super(_files, _pruning);
+            else
+            {
+                _attribute = _attributesList[0];
+
+                var file = _files[0];
+                var tree = TreeMap[_treeName];
+
+                Test test = new Test();
+                test.Tree = tree;
+                test.PrepareRelease(file, _pruning);
+
+                List<string> fullList = test.Full.GetAttributeList();
+
+                tree.Data = test.Init; ;
+                tree.ClassificationAttributeName = _attribute;
+                tree.Build();
+
+                if (_pruning)
+                    tree.Prunning(test.CrossValidate, 1.96);
+
+                if (_guiMode)
+                {
+                    MainWindow mw = new MainWindow(tree as C4_5Tree);
+                    mw.ShowDialog();
+                }
+                else
+                {
+                    Item item = tree.GetItem(_newItemAttributes);
+                    var res = tree.Classify(item);
+                    Console.WriteLine("Result: \n" + res);
+                }
+            }
+        }
+
+        public static void Super(List<string> _files, bool _isPruning)
+        {
             var files = _files;
 
             var sw = Stopwatch.StartNew();
-
 
             int start = Console.CursorTop + 1;
             List<Task> tasks = new List<Task>();
@@ -105,10 +197,10 @@ namespace ConsoleTest
             foreach (var fileName in files)
             {
                 var tests = new List<Test>();
-                //tests.Add(new Test() { Tree = new C4_5Tree() });
+                tests.Add(new Test() { Tree = new C4_5Tree() });
                 tests.Add(new Test() { Tree = new ID3Tree() });
-                //tests.Add(new Test() { Tree = new KNNTree() });
-                //tests.Add(new Test() { Tree = new NBCTree() });
+                tests.Add(new Test() { Tree = new KNNTree() });
+                tests.Add(new Test() { Tree = new NBCTree() });
 
                 Console.WriteLine($"File: {fileName}");
 
@@ -122,8 +214,8 @@ namespace ConsoleTest
                 foreach (var test in tests)
                 {
                     test.Prepare(fileName);
-                    var _attributes = test.Full.GetAttributeDict();
-                    fullList = fullList.Union(_attributes.Keys).ToList();
+                    var _attributes = test.Full.GetAttributeList();
+                    fullList = fullList.Union(_attributes).ToList();
 
                     total += _attributes.Count;
                 }
@@ -140,28 +232,7 @@ namespace ConsoleTest
                 {
                     Task task = new Task(() =>
                     {
-                        List<string> _attributes = new List<string>();
-                        List<string> _allAttributes = test.Full.GetAttributeList();
-                        List<string> _errorAttributes = new List<string>();
-
-                        if (_allAtttibutes)
-                        {
-                            _attributes = _allAttributes;
-                        }
-                        else
-                        {
-                            foreach (var att in _attributesList)
-                            {
-                                if (_allAttributes.Contains(att))
-                                {
-                                    _attributes.Add(att);
-                                }
-                                else
-                                {
-                                    _errorAttributes.Add(att);
-                                }
-                            }
-                        }
+                        List<string> _attributes = test.Full.GetAttributeList();
 
                         foreach (var name in _attributes)
                         {
@@ -192,15 +263,6 @@ namespace ConsoleTest
                                 Print(matrix);
                             }
                         }
-
-                        if (_errorAttributes.Count > 0)
-                        {
-                            Console.Write("Wrong attributes: ");
-                            foreach (var att in _errorAttributes)
-                                Console.Write(" " + att);
-                            Console.WriteLine();
-                        }
-
                     });
                     tasks.Add(task);
                 }
@@ -214,8 +276,6 @@ namespace ConsoleTest
 
             Console.CursorTop = start;
             Console.WriteLine("All OK " + sw.ElapsedMilliseconds);
-            Console.WriteLine("OK");
-            Console.ReadLine();
         }
         static void Print(string[][] matrix)
         {
@@ -245,6 +305,35 @@ namespace ConsoleTest
             for (int i = 0; i < tests.Count; i++)
             {
                 matrix[0][i + 1] = tests[i].Tree.Name;
+            }
+
+            for (int i = 1; i < matrix.GetLength(0); i++)
+            {
+                for (int j = 1; j < matrix[i].GetLength(0); j++)
+                {
+                    matrix[i][j] = string.Format("{0:0.00}", double.NaN);
+                }
+            }
+
+            return matrix;
+        }
+        static string[][] Clear(List<string> fullList, ITree tree)
+        {
+            string[][] matrix = new string[fullList.Count + 1][];
+
+            for (int i = 0; i < matrix.GetLength(0); i++)
+            {
+                matrix[i] = new string[2];
+            }
+
+            for (int i = 0; i < fullList.Count; i++)
+            {
+                matrix[i + 1][0] = fullList[i];
+            }
+
+            for (int i = 0; i < 1; i++)
+            {
+                matrix[0][i + 1] = tree.Name;
             }
 
             for (int i = 1; i < matrix.GetLength(0); i++)

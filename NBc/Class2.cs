@@ -61,6 +61,8 @@ namespace NBC
     }
     public partial class NBCTree : ITree
     {
+        internal Dictionary<string, Tuple<AttributeType, Type>> _attributeMap = new Dictionary<string, Tuple<AttributeType, Type>>();
+
         public string Name => "NBC";
 
         private string _classificationAttributeName;
@@ -161,6 +163,7 @@ namespace NBC
 
         public void Build()
         {
+            BuildAttributeMap();
             classifier = Train(this.Data);
         }
 
@@ -179,6 +182,54 @@ namespace NBC
             }
             double percent = 100.0 * right / set.Items.Count;
             return percent;
+        }
+
+        private void BuildAttributeMap()
+        {
+            foreach (var item in Data.Items)
+            {
+                foreach (var attribute in item.Attributes.Values)
+                {
+                    if (_attributeMap.ContainsKey(attribute.Name))
+                    {
+                        var tuple = _attributeMap[attribute.Name];
+                        AttributeType attributeType = tuple.Item1;
+                        Type valueType = tuple.Item2;
+
+
+                        if (attributeType != attribute.AttributeType)
+                        {
+                            throw new ArgumentException($"Attribute {attribute.Name} of {item}  have different attribute types : {attributeType} != {attribute.AttributeType}");
+                        }
+
+                        if (attribute.Value != null && valueType != attribute.Value.GetType())
+                        {
+                            throw new ArgumentException($"Attribute {attribute.Name} of {item}  have different type of values : {valueType} != {attribute.Value.GetType()}");
+                        }
+                    }
+                    else
+                    {
+                        _attributeMap.Add(attribute.Name, new Tuple<AttributeType, Type>(attribute.AttributeType, attribute.Value.GetType()));
+                    }
+                }
+            }
+        }
+
+        public Item GetItem(Dictionary<string, string> itemAttributes)
+        {
+            Item item = new Item();
+            foreach (var pair in itemAttributes)
+            {
+                string name = pair.Key;
+                object value = pair.Value;
+                var tuple = _attributeMap[name];
+
+                var obj = (IComparable)Convert.ChangeType(value, tuple.Item2);
+                var attr = new MyAttribute(name, obj, tuple.Item1);
+
+                item.Attributes[name] = attr;
+            }
+            return item;
         }
     }
 }

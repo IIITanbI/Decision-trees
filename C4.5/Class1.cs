@@ -601,6 +601,30 @@ namespace C4_5
             double percent = 100.0 * right / set.Items.Count;
             return percent;
         }
+
+        public Item GetItem(Dictionary<string, string> itemAttributes)
+        {
+            Item item = new Item();
+
+            foreach (var pair in _attributeMap)
+            {
+                string name = pair.Key;
+                var tuple = pair.Value;
+
+                IComparable resValue = null;
+                if (itemAttributes.ContainsKey(name))
+                {
+                    string value = itemAttributes[name];
+                    resValue = (IComparable)Convert.ChangeType(value, tuple.Item2);
+                }
+
+                var attr = new MyAttribute(name, resValue, tuple.Item1);
+                item.Attributes[name] = attr;
+            }
+
+            
+            return item;
+        }
     }
 
 

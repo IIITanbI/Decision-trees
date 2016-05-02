@@ -44,7 +44,7 @@ namespace C4_5
                     AttributeType type = GetType(attributeType);
                     item.Attributes[attributeName] = new MyAttribute(attributeName, value, type);
                 }
-
+               
                 set.Items.Add(item);
             }
             return set;
